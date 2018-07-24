@@ -1,0 +1,72 @@
+import pymysql
+import csv
+
+# 打开数据库连接
+conn= pymysql.connect(
+        host='localhost',
+        port = 3306,
+        user='root',
+        passwd='5985790',
+        db ='wangq',
+        )
+def insert(cur, sql, args):
+    cur.execute(sql, args)
+
+# 使用cursor()方法获取操作游标
+cur = conn.cursor()
+cur.execute("create table cluster_source_in (user_id BIGINT,flag_01 BIGINT,flag_02 BIGINT,flag_03 BIGINT,flag_04 BIGINT,flag_05 BIGINT,flag_06 BIGINT,flag_07 BIGINT,flag_08 BIGINT,flag_09 BIGINT,flag_10 BIGINT,flag_11 BIGINT,flag_12 BIGINT,flag_13 BIGINT,flag_14 BIGINT,flag_15 BIGINT,flag_16 BIGINT,flag_17 BIGINT,flag_18 BIGINT,flag_19 BIGINT)")
+
+
+with open('C:/Users/Administrator/Desktop/通过客户特征进行客户分群/cluster_source_in.csv','r+') as csvfile:
+    reader = csv.reader(csvfile)
+    for row in reader:
+        sql="insert into cluster_source_in values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+        args = row
+        a=0
+        for i in args:
+            if args[a] == "":
+                args[a]='0'
+            a=a+1
+        print(args)
+        insert(cur, sql=sql, args=args)
+
+
+
+import pandas as pd
+sql1= "SELECT * FROM cluster_source_in"
+df = pd.read_sql(sql=sql1,con=conn,coerce_float=True)
+
+
+conn.commit()
+cur.close()
+# 关闭数据库连接
+conn.close()
+
+def fax(ann):
+    an = 0
+    for ax in df[ann]:
+        if ax < 0:
+            df[ann][an]=0
+        an=an+1
+fax('flag_01')  
+fax('flag_02')      
+
+df_norm = (df - df.min()) / (df.max() - df.min())
+print(df_norm)
+
+from sklearn.cluster import KMeans
+
+km = KMeans(n_clusters=3)
+label = km.fit_predict(df_norm)
+
+from sklearn import metrics
+metrics.calinski_harabaz_score(df_norm, label)
+
+km1 = KMeans(n_clusters=4)
+label1 = km1.fit_predict(df_norm)
+metrics.calinski_harabaz_score(df_norm, label1)
+
+r1 = pd.Series(km1.labels_).value_counts() #统计各个类别的数目
+r2 = pd.DataFrame(km1.cluster_centers_) #找出聚类中心
+
+r2.to_excel("C:/Users/Administrator/Desktop/通过客户特征进行客户分群/temp.xlsx")
